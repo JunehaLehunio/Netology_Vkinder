@@ -21,9 +21,8 @@ create_data_base = create(int(password)).create_db()
 create_table = create(int(password)).create_table()
 print(create_data_base, create_table)
 
+
 """ПОЛУЧЕНИЕ ДАННЫХ ДЛЯ ПОДКЛЮЧЕНИЯ К СЕРВЕРУ"""
-
-
 def connect_bot():
     params_long_poll_server = {
         "access_token": token_group,
@@ -38,8 +37,6 @@ def connect_bot():
 
 
 """СОЕДИНЕНИЕ С СЕРВЕРОМ И ОЖИДАНИЕ СООБЩЕНИЯ"""
-
-
 def bots_longpoll_api(ts, key, server):
     params_bots_longpoll_api = {
         "act": 'a_check',
