@@ -1,0 +1,156 @@
+import json
+from vk_handler import cl_find_all_user, find_all_album, send_message
+from datetime import datetime  # для получения даты рождения
+
+
+def processing_message(age_converting_message, converting_message, token_group, token_user, for_the_user_id, password):
+    global hello_time
+
+    # Если первые символы являются числом, то ищем по параметрам пользователей
+    if age_converting_message == True:
+        current_datetime = datetime.now().year  # определяем текущий год
+        # получаем год рождения по полученному возрасту из сообщения
+        birth_year = int(current_datetime) - int(converting_message[0][:2])
+
+        # Проверяем является ли значение города строкой
+        if converting_message[1].isdigit() is False:
+            query_city = converting_message[1].replace(' ', '').title()
+
+            # Проверяем, существует ли название города в базе данных городов. Если да, то получаем его идентификатор
+            city_id = cl_find_all_user(token_user, token_group, for_the_user_id, password, query_city).find_city()
+            if city_id:
+                # Отправляем сообщение, что начинаем поиск
+                message = ('Ищем пользователя.\nЭто может занять какое-то время.')
+                attachment = ''
+                send_message(message, attachment, for_the_user_id, token_group)
+                offset = 0
+                with open(f'find_id{for_the_user_id}.json', 'r') as file_j:
+                    read_json = file_j.read()
+                find_vk_offset = json.loads(read_json)
+                sex = find_vk_offset[0]['sex']
+                print(sex)
+                data = []
+                data.append({
+                    'city_id': city_id,
+                    'birth_year': birth_year,
+                    'offset': offset,
+                    'sex': sex
+                })
+                with open(f'find_id{for_the_user_id}.json', 'w', encoding='utf-8') as outfile:
+                    json.dump(data, outfile)
+
+                # Выполняем поиск по заданным критериям
+                try:
+                    user_id, first_name, last_name = cl_find_all_user(token_user=token_user, password=password,
+                                                                      token_group=token_group,
+                                                                      for_the_user_id=for_the_user_id,
+                                                                      query_city=None).find_new_user()
+                    # Получаем данные найденного пользователя и начинаем поиск фото пользователя с дальнейшей отправкой
+                    # сообщения с ссылкой и фото. Если фото меньше 3, то отправляет те, которые нашлись
+                    message = f'@id{user_id}({last_name} {first_name})\n' \
+                              f'Чтобы продолжить поиск, напиши в сообщении слово "да"'
+                    find_all_album(token_user, token_group, user_id, message, for_the_user_id)
+                except Exception as err:
+                    print(err)
+                    attachment = ''
+                    message = 'Произошла ошибка.\n' \
+                              'Попробуйте еще раз или измените параметры поиска'
+                    send_message(message, attachment, for_the_user_id, token_group)
+
+            else:
+                print(f'Неверно введено название города: {city_id}')
+                attachment = ''
+                message = f'Неверно введено название города: {query_city.title()}\n' \
+                          f'Попробуйте еще раз'
+                send_message(message, attachment, for_the_user_id, token_group)
+
+        else:
+            print(f'Неверно введены данные: {converting_message[1]}')
+            attachment = ''
+            message = f'Неверно введены данные: < {converting_message[1]} >\nПопробуйте еще раз.'
+            send_message(message, attachment, for_the_user_id, token_group)
+
+    # Если первые символы не являются числом, то смотрим тело сообщения для поиска команды
+    else:
+        if 'начать' in converting_message:
+            # определяем текущее время суток для приветствия
+            time_now = datetime.today()
+            print(time_now.hour)
+            if 22 < time_now.hour <= 24 or 0 < time_now.hour <= 5:
+                hello_time = 'Доброй ночи'
+            elif 5 < time_now.hour <= 11:
+                hello_time = 'Доброе утро'
+            elif 11 < time_now.hour <= 15:
+                hello_time = 'Добрый день'
+            elif 15 < time_now.hour <= 22:
+                hello_time = 'Добрый вечер'
+            else:
+                hello_time = "Приветствую"
+
+            # Собираем информацию о пользователе(пол, имя), для которого ищем партнера
+            first_name = cl_find_all_user(token_user=token_user, password=password, token_group=token_group,
+                                          for_the_user_id=for_the_user_id, query_city=None).user_info()
+            message = f'{hello_time}, {first_name}!\n' \
+                      'Вас приветствует бот поиска партнера.\n' \
+                      'Через запятую укажите возраст (старше 18 лет) и город, в котором будем искать партнера.\n' \
+                      'Например: 21, Москва'
+            attachment = ''
+            send_message(message, attachment, for_the_user_id, token_group)
+
+        elif 'помощь' in converting_message:
+            message = 'список поддерживаемых команд:\n' \
+                      '<начать> - Приветствие и краткое описание бота\n' \
+                      '<возраст, название города:> - Поиск по критериям.\n' \
+                      'После команды через запятую указывается возраст, город и пол (м или ж) например:\n' \
+                      '25, Москва\n' \
+                      '<да> - Найти следующего претендента с характеристиками, введенными в предыдущем поиске\n' \
+                      '<помощь> - Список и описание команд'
+            attachment = ''
+            send_message(message, attachment, for_the_user_id, token_group)
+
+        elif 'да' in converting_message:
+            message = 'Ищем другого пользователя'
+            attachment = ''
+            send_message(message, attachment, for_the_user_id, token_group)
+
+            try:
+                with open(f'find_id{for_the_user_id}.json', 'r') as file_j:
+                    read_json = file_j.read()
+                find_vk_offset = json.loads(read_json)
+                city_id = find_vk_offset[0]['city_id']
+                birth_year = find_vk_offset[0]['birth_year']
+                offset = find_vk_offset[0]['offset']
+                sex = find_vk_offset[0]['sex']
+                data = []
+                data.append({
+                    'city_id': city_id,
+                    'birth_year': birth_year,
+                    'offset': int(offset) + 1,
+                    'sex': sex
+                })
+                with open(f'find_id{for_the_user_id}.json', 'w', encoding='utf-8') as outfile:
+                    json.dump(data, outfile)
+
+                # Получаем данные найденного пользователя и начинаем поиск фото пользователя с дальнейшей отправкой
+                # сообщения фото и ссылкой. Если фото меньше 3, то отправляет те, которые нашлись
+                user_id, first_name, last_name = cl_find_all_user(token_user=token_user, password=password,
+                                                                  token_group=token_group,
+                                                                  for_the_user_id=for_the_user_id,
+                                                                  query_city=None).find_new_user()
+                # Получаем данные найденного пользователя и отправляем сообщение
+                message = f'@id{user_id}({last_name} {first_name})\n' \
+                          f'Чтобы продолжить поиск, напиши в сообщении слово "да"'
+                find_all_album(token_user, token_group, user_id, message, for_the_user_id)
+            except Exception as err:
+                print(err)
+                message = 'Поисковый запрос еще не был сформирован.\n' \
+                          'Введите "помощь" для получения списка команд.'
+                attachment = ''
+                send_message(message, attachment, for_the_user_id, token_group)
+                return
+        else:
+            message = 'Такая команда отсутствует, попробуйте еще раз.\nДля получения справки и списку команд напишите без кавычек слово "помощь".'
+            attachment = ''
+            send_message(message, attachment, for_the_user_id, token_group)
+
+        # return
