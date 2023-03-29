@@ -1,4 +1,4 @@
-# Netology_Vkinder_diplom
+# Основное описание работы чат-бота "Vkinder". 
 
 **Файлы:**
 
