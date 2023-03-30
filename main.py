@@ -48,8 +48,8 @@ def bots_longpoll_api(ts, key, server):
     bot_create_connect = requests.get(server, params=params_bots_longpoll_api)
     server_response = bot_create_connect.json()['updates']
 
-    """ смотрим, что пришло в сообщении от сервера
-    если во время ожидания сервера ("wait": 25) пришло сообщение, то проверяем отправителя и тело сообщения, 
+    """ Смотрим, что пришло в сообщении от сервера.
+    Если во время ожидания сервера ("wait": 25) пришло сообщение, то проверяем отправителя и тело сообщения, 
     перезагружаем соединение со смещенным ts"""
     if server_response:
         input_message_serv = server_response[0]['type']
@@ -59,16 +59,16 @@ def bots_longpoll_api(ts, key, server):
             for_the_user_id = server_response[0]['object']['message']['from_id']
             message_in = server_response[0]['object']['message']['text']  # смотрим тело сообщения
 
-            # заменяем двоеточие на запятую и делаем буквы прописью, убираем все пробелы, разделяем все запятой
+            # Делаем форматирование текста
             converting_message = message_in.lower().replace(' ', '').split(sep=',', maxsplit=-1)
 
-            # проверяем первые символы сообщения, если число, то отправляем True
+            # Проверяем первые символы сообщения. Если число, то отправляем True
             age_converting_message = message_in[:2]
 
             # Проверяем является ли значение возраста числом
             if age_converting_message.isdigit() is True:
 
-                # Проверяем возраст. Больше или равен 18 и меньше 100
+                # Проверяем возраст.
                 if 18 <= int(age_converting_message) < 100:
 
                     # Проверяем длину сообщения:
