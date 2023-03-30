@@ -6,8 +6,8 @@ class create:
     def __init__(self, password):
         self.password = password
 
+        
     """СОЗДАНИЕ БАЗЫ ДАННЫХ"""
-
     def create_db(self):
         print("Create database")
         create_conn = psycopg2.connect(dbname='postgres', user='postgres', password=self.password)
@@ -25,8 +25,8 @@ class create:
         create_conn.close()
         return answer_db
 
+    
     """СОЗДАНИЕ ТАБЛИЦ"""
-
     def create_table(self):
         print("Create_TABLE")
         conn = psycopg2.connect(database="db_user_vk", user='postgres', password=self.password)
@@ -44,8 +44,6 @@ class create:
 
 
 """СОЗДАНИЕ БАЗЫ ДАННЫХ"""
-
-
 class check_insert_user_table:
     def __init__(self, password, user_id, first_name, last_name):
         self.password = password
@@ -53,13 +51,14 @@ class check_insert_user_table:
         self.first_name = first_name
         self.last_name = last_name
 
+        
     def connect_db(self):
         conn = psycopg2.connect(database='db_user_vk', user='postgres', password=self.password)
         connection = conn.cursor()
         return conn, connection
 
+    
     """ПРОВЕРКА ID ПОЛЬЗОВАТЕЛЯ В ТАБЛИЦЕ"""
-
     def check_users(self):
         conn, connection = check_insert_user_table.connect_db(self)
         connection.execute("""SELECT * FROM user_vk WHERE user_id = %s;""", (f'{self.user_id}',))
@@ -77,8 +76,8 @@ class check_insert_user_table:
             conn.close()
             return status
 
+        
     """ВСТАВКА НВОГО ЗНАЧЕНИЯ В ТАБЛИЦУ"""
-
     def insert_users(self):
         conn, connection = check_insert_user_table.connect_db(self)
         connection.execute("""INSERT INTO user_vk (user_id) VALUES (%s);""", (self.user_id,))
@@ -86,5 +85,4 @@ class check_insert_user_table:
         connection.close()
         conn.close()
         user_id, first_name, last_name = self.user_id, self.first_name, self.last_name
-
         return user_id, first_name, last_name
