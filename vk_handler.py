@@ -162,7 +162,7 @@ class cl_find_all_user():
             return user_id, first_name, last_name, check_list
         # Проверяем ID найденного пользователя в БД
         check_user_in_db = check_insert_user_table(int(self.password), user_id, first_name,
-                                                   last_name).check_users()
+                                                   last_name, self.for_the_user_id).check_users()
 
         # Если профиль пользователя закрыт или уже был добавлен в БД, то делаем смещение поиска и начинаем новый поиск
         if is_closed == True or check_user_in_db == "available":
@@ -181,7 +181,7 @@ class cl_find_all_user():
 
         # Если профиль пользователя открыт или отсутствует в БД, то добавляем нового пользователя в таблицу
         elif check_user_in_db == "absent":
-            check_insert_user_table(int(self.password), user_id, first_name, last_name).insert_users()
+            check_insert_user_table(int(self.password), user_id, first_name, last_name, self.for_the_user_id).insert_users()
         return user_id, first_name, last_name, check_list
 
 
