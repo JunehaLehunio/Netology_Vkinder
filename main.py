@@ -35,7 +35,7 @@ def connect_bot(n):
     long_poll_server = requests.get('https://api.vk.com/method/groups.getLongPollServer', params_long_poll_server)
 
     # Устанавливаем таймер задержки между повторными запросами, на случай ошибки
-    timer = 3
+    timer = 2
     try:
         data_long_poll_server = long_poll_server.json()['response']
         server = data_long_poll_server['server']
@@ -109,4 +109,4 @@ def bots_longpoll_api(ts, key, server):
 
 
 # Запускаем бот. Передаем количество попыток подключения к серверу при ошибках подключения
-connect_bot(5)
+connect_bot(3)
