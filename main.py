@@ -19,9 +19,8 @@ group_id = key_data_json['group_id']
 password = key_data_json['password']
 
 """СОЗДАЕМ БД И ТАБЛИЦЫ"""
-create_data_base = create(password).create_db()
-create_table = create(password).create_table()
-print(create_data_base, create_table)
+create_data_base = create(password, for_the_user_id=None).create_db()
+print(create_data_base)
 
 """ПОЛУЧЕНИЕ ДАННЫХ ДЛЯ ПОДКЛЮЧЕНИЯ К СЕРВЕРУ"""
 
@@ -80,6 +79,11 @@ def bots_longpoll_api(ts, key, server):
             print('Получено сообщение от пользователя')
             # Смотрим id пользователя, который написал сообщение. Нужен для вставки в параметры и ответа ему же
             for_the_user_id = server_response[0]['object']['message']['from_id']
+
+            # Создаем таблицу для пользователя с его ID
+            create_table = create(password, for_the_user_id).create_table()
+            print(create_table)
+
             message_in = server_response[0]['object']['message']['text']  # смотрим тело сообщения
             converting_message = message_in.lower().replace(' ', ', ').split(sep=',', maxsplit=-1)
             # Проверка длины сообщения:
@@ -109,4 +113,4 @@ def bots_longpoll_api(ts, key, server):
 
 
 # Запускаем бот. Передаем количество попыток подключения к серверу при ошибках подключения
-connect_bot(3)
+connect_bot(5)
