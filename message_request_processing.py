@@ -1,4 +1,6 @@
 import json
+
+from data_db import create
 from vk_handler import cl_find_all_user, find_all_album, send_message, check_data_user
 from datetime import datetime  # для получения даты рождения
 
@@ -89,9 +91,9 @@ def processing_message(converting_message, token_group, token_user, for_the_user
                         find_all_album(token_user, token_group, user_id, message, for_the_user_id)
 
             else:
-                print(f'Неверно введено название населенного пункта: {city_id}')
+                print(f'Неверно введено название города: {city_id}')
                 attachment = ''
-                message = f'Неверно введено название населенного пункта: {query_city.title()}\n' \
+                message = f'Неверно введено название города: {query_city.title()}\n' \
                           f'Попробуйте еще раз'
                 send_message(message, attachment, for_the_user_id, token_group)
 
@@ -148,13 +150,14 @@ def processing_message(converting_message, token_group, token_user, for_the_user
     elif 'помощь' in converting_message:
         message = 'список поддерживаемых команд:\n' \
                   '<начать> - Старт бота и сбор необходимой информации для поиска партнера.\n' \
-                  '<город название населенного пункта> - Команда изменения населенного пункта, в котором происходит поиск, например:\n' \
+                  '<город название города> - Команда изменения города, в котором происходит поиск, например:\n' \
                   'город Москва\n' \
                   'Эту команду потребуется ввести, если в вашем профиле не указан город проживания.\n' \
                   '<год год рождения> - Команда изменения года рождения искомых пользователей, например:\n' \
                   'год 2000\n' \
                   'Год рождения партнеров берется из условия +-3 года от указанного года рождения\n' \
                   '<да> - Найти следующего претендента с характеристиками, введенными в предыдущем поиске\n' \
+                  '<очистить> - Очистка истории поиска\n' \
                   '<помощь> - Вывод списка команд и их описание.'
         attachment = ''
         send_message(message, attachment, for_the_user_id, token_group)
@@ -206,6 +209,12 @@ def processing_message(converting_message, token_group, token_user, for_the_user
             attachment = ''
             send_message(message, attachment, for_the_user_id, token_group)
             return
+    elif 'очистить' in converting_message:
+        del_user_table = create(password, for_the_user_id).del_table()
+        print(del_user_table)
+        message = del_user_table
+        attachment = ''
+        send_message(message, attachment, for_the_user_id, token_group)
     else:
         message = 'Такая команда отсутствует, попробуйте еще раз.\nДля получения справки и списку команд напишите без кавычек слово "помощь".'
         attachment = ''
