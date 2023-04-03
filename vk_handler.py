@@ -6,6 +6,7 @@ from vk_api.utils import get_random_id
 import json
 from data_db import check_insert_user_table
 from operator import itemgetter
+from datetime import datetime
 
 """ ОТПРАВКА СООБЩЕНИЙ"""
 
@@ -19,7 +20,28 @@ def send_message(message, attachment, for_the_user_id, token_group):
         attachment=attachment,
         message=message
     )
-    # return
+    print('Отправлено сообщение пользователю')
+
+
+def check_data_user(for_the_user_id, token_group):
+    # =============Читаем данные из файла, изменяем офсет и записываем снова в файл=====================
+    with open(f'find_id{for_the_user_id}.json', 'r') as file_j:
+        read_json = file_j.read()
+    find_vk_offset = json.loads(read_json)
+    city_id = find_vk_offset[0]['city_id']
+    birth_year = find_vk_offset[0]['birth_year']
+    check = False
+    attachment = ''
+    if city_id == "None":
+        message = 'Введите слово "город" и название города, в котором будет происходить поиск.\nНапример: "город Чита"'
+
+    elif birth_year == "None":
+        message = 'Введите слово "год" и год своего рождения.\nНапример: "год 1990"'
+    else:
+        check = True
+        message = "Начинаем поиск. Это может занять какое-то время."
+    send_message(message, attachment, for_the_user_id, token_group)
+    return check
 
 
 """КЛАСС ПОИСКА ПОЛЬЗОВАТЕЛЕЙ"""
@@ -39,17 +61,32 @@ class cl_find_all_user():
         params = {
             "access_token": self.token_user,
             "user_ids": self.for_the_user_id,
-            "fields": 'sex',
+            "fields": 'sex, bdate, city',
             "v": "5.131"
         }
         perform = requests.get("https://api.vk.com/method/users.get", params)
         try:
             response_data = perform.json()["response"][0]
-            data = [{'sex': 3 - response_data['sex']}]
+            first_name = response_data['first_name']
+            if 'city' in response_data:
+                city_id = response_data['city']['id']
+            else:
+                city_id = 'None'
+            if 'bdate' in response_data:
+                bdate = int(response_data['bdate'][-4:])
+            else:
+                bdate = 'None'
+
+            data = [{'sex': 3 - response_data['sex'],
+                     'city_id': city_id,
+                     'birth_year': bdate,
+                     "offset": 0
+                     }]
+
             with open(f'find_id{self.for_the_user_id}.json', 'w', encoding='utf-8') as outfile:
                 json.dump(data, outfile)
-            first_name = response_data['first_name']
-        except Exception as err:
+
+        except KeyError as err:
             print("Возникла ошибка проверки данных пользователя", err)
             return False
         return first_name
@@ -63,7 +100,6 @@ class cl_find_all_user():
                  'v': 5.131
                  }
         rec_city = requests.get("https://api.vk.com/method/database.getCities", param)
-        print(rec_city.json())
         try:
             city_id = rec_city.json()["response"]["items"][0]['id']
             return city_id
@@ -74,7 +110,7 @@ class cl_find_all_user():
     """ПОИСК ПОЛЬЗОВАТЕЛЕЙ ПО КРИТЕРИЯМ"""
 
     def find_new_user(self):
-        # =============Читаем данные из файла, изменяем офсет и записываем снова в файл=====================
+
         with open(f'find_id{self.for_the_user_id}.json', 'r') as file_j:
             read_json = file_j.read()
         find_vk_offset = json.loads(read_json)
@@ -83,11 +119,13 @@ class cl_find_all_user():
         offset = find_vk_offset[0]['offset']
         sex = find_vk_offset[0]['sex']
 
+        current_datetime = datetime.now().year
         params = {
             "sort": 0,
             "offset": offset,
-            "city_id": city_id,
-            'birth_year': birth_year,
+            "city": city_id,
+            "age_from": (current_datetime - birth_year) - 3,
+            "age_to": (current_datetime - birth_year) + 3,
             "has_photo": 0,
             "count": 1,
             "sex": sex,
@@ -98,19 +136,30 @@ class cl_find_all_user():
             "v": "5.131"
         }
         perform = requests.get("https://api.vk.com/method/users.search", params)
-        # print(perform.json())
+
+        check_list = True
         try:
             response_data = perform.json()["response"]["items"]
         except Exception as err:
             print("Возникла ошибка поиска пользователей", err)
-            return False
-
+            check_list = False
+            user_id = False
+            first_name = False
+            last_name = False
+            return user_id, first_name, last_name, check_list
         # Получаем информацию о найденном пользователе
-        is_closed = response_data[0]["is_closed"]
-        user_id = response_data[0]["id"]
-        last_name = response_data[0]["last_name"]
-        first_name = response_data[0]["first_name"]
-
+        try:
+            is_closed = response_data[0]["is_closed"]
+            user_id = response_data[0]["id"]
+            last_name = response_data[0]["last_name"]
+            first_name = response_data[0]["first_name"]
+        except Exception as err:
+            print("Список пуст", err)
+            check_list = False
+            user_id = False
+            first_name = False
+            last_name = False
+            return user_id, first_name, last_name, check_list
         # Проверяем ID найденного пользователя в БД
         check_user_in_db = check_insert_user_table(int(self.password), user_id, first_name,
                                                    last_name).check_users()
@@ -125,13 +174,15 @@ class cl_find_all_user():
             }]
             with open(f'find_id{self.for_the_user_id}.json', 'w', encoding='utf-8') as outfile:
                 json.dump(data, outfile)
-            user_id, first_name, last_name = cl_find_all_user(self.token_user, self.token_group, self.for_the_user_id,
-                                                              self.password, self.query_city).find_new_user()
+            user_id, first_name, last_name, check_list = cl_find_all_user(self.token_user, self.token_group,
+                                                                          self.for_the_user_id,
+                                                                          self.password,
+                                                                          self.query_city).find_new_user()
 
         # Если профиль пользователя открыт или отсутствует в БД, то добавляем нового пользователя в таблицу
         elif check_user_in_db == "absent":
             check_insert_user_table(int(self.password), user_id, first_name, last_name).insert_users()
-        return user_id, first_name, last_name
+        return user_id, first_name, last_name, check_list
 
 
 # Получаем идентификаторы всех альбомов найденного пользователя. Ищем фото и выбираем топ 3
@@ -147,16 +198,19 @@ def find_all_album(token_user, token_group, user_id, message, for_the_user_id):
         "access_token": token_user,
         "v": "5.131"
     }
-
     resp = requests.get("https://api.vk.com/method/photos.getAlbums", params_album)
-    response_data = resp.json()["response"]["items"]
-    album_list = []
-    for iter_user in range(len(response_data)):  # получаем количество альбомов
-        id_album = response_data[iter_user]["id"]
-        size = response_data[iter_user]["size"]
-        title = response_data[iter_user]["title"]
-        album = {"id_album": int(id_album), "size": size, "title": title}
-        album_list.append(album)
+    try:
+        response_data = resp.json()["response"]["items"]
+        album_list = []
+        for iter_user in range(len(response_data)):  # получаем количество альбомов
+            id_album = response_data[iter_user]["id"]
+            size = response_data[iter_user]["size"]
+            title = response_data[iter_user]["title"]
+            album = {"id_album": int(id_album), "size": size, "title": title}
+            album_list.append(album)
+    except Exception as err:
+        print(err)
+        return False
 
     like_and_comments = []
     for numerator_album_list in range(len(album_list)):
@@ -171,20 +225,24 @@ def find_all_album(token_user, token_group, user_id, message, for_the_user_id):
             "access_token": token_user,
             "v": "5.131"
         }
-
         resp = requests.get("https://api.vk.com/method/photos.get", params).json()
-        response_data = resp["response"]["items"]
+        try:
+            response_data = resp["response"]["items"]
 
-        # Получаем максимальный размер фото
-        for numerator_response_data in range(len(response_data)):
-            quantity = []
-            for numerator_sizes in range(len(response_data[numerator_response_data]["sizes"])):
-                quantity.append(numerator_sizes)
-            max_size_photo = max(quantity)
-            raw_url_photo_vk = response_data[numerator_response_data]["sizes"][max_size_photo]["url"]
-            likes = response_data[numerator_response_data]["likes"]["count"]
-            comments = response_data[numerator_response_data]["comments"]["count"]
-            like_and_comments.append({"likes_comments_summ": (likes + comments), "raw_url_photo_vk": raw_url_photo_vk})
+            # Получаем максимальный размер фото
+            for numerator_response_data in range(len(response_data)):
+                quantity = []
+                for numerator_sizes in range(len(response_data[numerator_response_data]["sizes"])):
+                    quantity.append(numerator_sizes)
+                max_size_photo = max(quantity)
+                raw_url_photo_vk = response_data[numerator_response_data]["sizes"][max_size_photo]["url"]
+                likes = response_data[numerator_response_data]["likes"]["count"]
+                comments = response_data[numerator_response_data]["comments"]["count"]
+                like_and_comments.append(
+                    {"likes_comments_summ": (likes + comments), "raw_url_photo_vk": raw_url_photo_vk})
+        except Exception as err:
+            print(err)
+            return False
 
     # Получаем 3 фото с максимальным суммарным количеством лайков и комментариев
     prepared_dictionary_attach = []
@@ -193,9 +251,9 @@ def find_all_album(token_user, token_group, user_id, message, for_the_user_id):
 
     # Преобразуем полученные ссылки фото и формируем список с последующей отправкой пользователю
     attachment = []
+    num_photo = 1
     for numerator in prepared_dictionary_attach[0]:
         url = numerator['raw_url_photo_vk']
-        print(url)
         img = requests.get(url).content
         resave_bytes_photo = BytesIO(img)
         response = upload.photo_messages(resave_bytes_photo)[0]
@@ -203,6 +261,7 @@ def find_all_album(token_user, token_group, user_id, message, for_the_user_id):
         photo_id = response['id']
         access_key = response['access_key']
         url_attachment = f'photo{owner_id}_{photo_id}_{access_key}'
-        print(url_attachment)
         attachment.append(url_attachment)
+        print(f'Получено фото {num_photo}: {url_attachment}')
+        num_photo += 1
     return send_message(message, attachment, for_the_user_id, token_group)
