@@ -89,9 +89,9 @@ def processing_message(converting_message, token_group, token_user, for_the_user
                         find_all_album(token_user, token_group, user_id, message, for_the_user_id)
 
             else:
-                print(f'Неверно введено название города: {city_id}')
+                print(f'Неверно введено название населенного пункта: {city_id}')
                 attachment = ''
-                message = f'Неверно введено название города: {query_city.title()}\n' \
+                message = f'Неверно введено название населенного пункта: {query_city.title()}\n' \
                           f'Попробуйте еще раз'
                 send_message(message, attachment, for_the_user_id, token_group)
 
@@ -148,7 +148,7 @@ def processing_message(converting_message, token_group, token_user, for_the_user
     elif 'помощь' in converting_message:
         message = 'список поддерживаемых команд:\n' \
                   '<начать> - Старт бота и сбор необходимой информации для поиска партнера.\n' \
-                  '<город название города> - Команда изменения города, в котором происходит поиск, например:\n' \
+                  '<город название населенного пункта> - Команда изменения населенного пункта, в котором происходит поиск, например:\n' \
                   'город Москва\n' \
                   'Эту команду потребуется ввести, если в вашем профиле не указан город проживания.\n' \
                   '<год год рождения> - Команда изменения года рождения искомых пользователей, например:\n' \
